@@ -1,6 +1,5 @@
 import os
-import tkinter as tk
-from tkinter import filedialog, messagebox
+import streamlit as st
 
 
 def find_all_matching_paths(base_dir, path_parts):
@@ -39,64 +38,39 @@ def list_files_in_subfolders(folder):
     return file_list
 
 
-def on_search(event=None):
-    """
-    Handles the search functionality when the user enters a query.
-    """
-    query = topic_entry.get().strip()
-    if not query:
-        messagebox.showwarning("Input Required", "Please enter a topic name or path.")
-        return
+# Streamlit app setup
+st.title("Folder Search Tool")
 
-    # Normalize and split the query into path parts
-    path_parts = query.replace("\\", "/").split("/")
-    matching_folders = find_all_matching_paths(BASE_DIR, path_parts)
+# Input for base directory
+base_dir = st.text_input("Enter the base directory:", "")
+if not base_dir:
+    st.warning("Please enter a base directory.")
 
-    # Clear the result listbox
-    result_listbox.delete(0, tk.END)
-
-    if not matching_folders:
-        messagebox.showerror("Not Found", f"No matching folder found for '{query}'.")
-        result_listbox.insert(tk.END, f"⚠ No folder found matching: '{query}'")
-        return
-
-    # Collect all files from matching folders
-    all_files = []
-    for folder in matching_folders:
-        all_files.extend(list_files_in_subfolders(folder))
-
-    if not all_files:
-        result_listbox.insert(tk.END, f"⚠ No files found in: '{query}'")
+# Input for search query
+query = st.text_input("Enter topic or path to search:", "")
+if st.button("Search"):
+    if not base_dir:
+        st.error("No base directory provided. Please enter one.")
+    elif not os.path.isdir(base_dir):
+        st.error("The base directory does not exist. Please enter a valid directory.")
+    elif not query:
+        st.warning("Please enter a topic name or path.")
     else:
-        for file in all_files:
-            result_listbox.insert(tk.END, file)
+        # Normalize and split the query into path parts
+        path_parts = query.replace("\\", "/").split("/")
+        matching_folders = find_all_matching_paths(base_dir, path_parts)
 
+        if not matching_folders:
+            st.error(f"No matching folder found for '{query}'.")
+        else:
+            # Collect all files from matching folders
+            all_files = []
+            for folder in matching_folders:
+                all_files.extend(list_files_in_subfolders(folder))
 
-# Prompt user to select a base directory
-root = tk.Tk()
-root.withdraw()  # Hide the root window while selecting the directory
-BASE_DIR = filedialog.askdirectory(title="Select Base Directory")
-if not BASE_DIR:
-    messagebox.showerror("Error", "No directory selected. Exiting program.")
-    exit()
-
-# GUI Setup
-root = tk.Tk()
-root.title("Folder Search Tool")
-
-# Input field
-tk.Label(root, text="Enter Topic or Path:").pack(pady=5)
-topic_entry = tk.Entry(root, width=50)
-topic_entry.pack(pady=5)
-topic_entry.bind("<Return>", on_search)
-
-# Search button
-search_button = tk.Button(root, text="Search", command=on_search)
-search_button.pack(pady=5)
-
-# Results listbox
-result_listbox = tk.Listbox(root, width=80, height=20)
-result_listbox.pack(pady=10)
-
-# Start the GUI loop
-root.mainloop()
+            if not all_files:
+                st.warning(f"No files found in the matching folders for '{query}'.")
+            else:
+                st.success(f"Found {len(all_files)} files matching your query.")
+                for file in all_files:
+                    st.text(file)
