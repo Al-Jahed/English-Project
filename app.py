@@ -5,7 +5,7 @@ from tkinter import filedialog, messagebox
 
 def find_all_matching_paths(base_dir, path_parts):
     """
-    Recursively searches for folders and files matching the given path parts.
+    Recursively searches for folders matching the given path parts.
     """
     matching_paths = []
 
@@ -17,14 +17,11 @@ def find_all_matching_paths(base_dir, path_parts):
         next_part = parts[0]
         for item in os.listdir(current_dir):
             item_path = os.path.join(current_dir, item)
-            # Check if the current folder or file matches the query part
-            if next_part.lower() in item.lower():
-                if os.path.isdir(item_path):
-                    search_directory(item_path, parts[1:])
-                elif os.path.isfile(item_path) and len(parts) == 1:
-                    matching_paths.append(item_path)
-            # Continue traversing subdirectories
             if os.path.isdir(item_path):
+                # Check if the current folder matches the query part
+                if next_part.lower() in item.lower():
+                    search_directory(item_path, parts[1:])
+                # Continue traversing even if it doesn't match
                 search_directory(item_path, parts)
 
     search_directory(base_dir, path_parts)
@@ -53,29 +50,26 @@ def on_search(event=None):
 
     # Normalize and split the query into path parts
     path_parts = query.replace("\\", "/").split("/")
-    matching_paths = find_all_matching_paths(BASE_DIR, path_parts)
+    matching_folders = find_all_matching_paths(BASE_DIR, path_parts)
 
     # Clear the result listbox
     result_listbox.delete(0, tk.END)
 
-    if not matching_paths:
-        messagebox.showerror(
-            "Not Found", f"No matching folder or file found for '{query}'."
-        )
-        result_listbox.insert(tk.END, f"⚠ No folder or file found matching: '{query}'")
+    if not matching_folders:
+        messagebox.showerror("Not Found", f"No matching folder found for '{query}'.")
+        result_listbox.insert(tk.END, f"⚠ No folder found matching: '{query}'")
         return
 
-    # Display matching folders and files
-    for path in matching_paths:
-        result_listbox.insert(tk.END, path)
+    # Collect all files from matching folders
+    all_files = []
+    for folder in matching_folders:
+        all_files.extend(list_files_in_subfolders(folder))
 
-
-def on_clear():
-    """
-    Clears the search results and the input field.
-    """
-    topic_entry.delete(0, tk.END)  # Clear the input field
-    result_listbox.delete(0, tk.END)  # Clear the results listbox
+    if not all_files:
+        result_listbox.insert(tk.END, f"⚠ No files found in: '{query}'")
+    else:
+        for file in all_files:
+            result_listbox.insert(tk.END, file)
 
 
 # Prompt user to select a base directory
@@ -88,10 +82,10 @@ if not BASE_DIR:
 
 # GUI Setup
 root = tk.Tk()
-root.title("Folder and File Search Tool")
+root.title("Folder Search Tool")
 
 # Input field
-tk.Label(root, text="Enter Topic, Folder, or File Name:").pack(pady=5)
+tk.Label(root, text="Enter Topic or Path:").pack(pady=5)
 topic_entry = tk.Entry(root, width=50)
 topic_entry.pack(pady=5)
 topic_entry.bind("<Return>", on_search)
@@ -99,10 +93,6 @@ topic_entry.bind("<Return>", on_search)
 # Search button
 search_button = tk.Button(root, text="Search", command=on_search)
 search_button.pack(pady=5)
-
-# Clear button
-clear_button = tk.Button(root, text="Clear", command=on_clear)
-clear_button.pack(pady=5)
 
 # Results listbox
 result_listbox = tk.Listbox(root, width=80, height=20)
